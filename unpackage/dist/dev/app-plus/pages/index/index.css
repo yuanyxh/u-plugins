@@ -1,0 +1,12 @@
+
+*[data-v-1cf27b2a] {
+  margin: 0;
+  padding: 0;
+}
+.card[data-v-1cf27b2a] {
+  margin-top: 10px;
+  background-color: yellowgreen;
+  height: 80px;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
