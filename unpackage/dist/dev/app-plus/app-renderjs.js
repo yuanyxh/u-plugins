@@ -102,18 +102,6 @@ __renderjsModules["31349b53"] = (() => {
   };
   var scrollerContainer = null;
   var scroller = null;
-  var scrollerContainerRect = {
-    left: 0,
-    top: 0,
-    width: 0,
-    height: 0
-  };
-  var scrollerRect = {
-    left: 0,
-    top: 0,
-    width: 0,
-    height: 0
-  };
   var maxScrollX = 0;
   var maxScrollY = 0;
   var hasHorizontalScroll = false;
@@ -137,9 +125,7 @@ __renderjsModules["31349b53"] = (() => {
     data() {
       return {
         bounceScrollX: false,
-        bounceScrollY: false,
-        bounceScrollLeft: 0,
-        bounceScrollTop: 0
+        bounceScrollY: false
       };
     },
     watch: {
@@ -148,23 +134,15 @@ __renderjsModules["31349b53"] = (() => {
       },
       bounceScrollY(val) {
         this.refresh();
-      },
-      bounceScrollLeft(val) {
-        this.scrollTo(val, this.bounceScrollTop);
-      },
-      bounceScrollTop(val) {
-        this.scrollTo(this.bounceScrollLeft, val);
       }
     },
     /** init */
     mounted() {
       scrollerContainer = document.getElementById("scroller-container");
+      scrollerContainer = scrollerContainer.getElementsByClassName("uni-scroll-view")[1];
       scroller = document.getElementById("scroller");
-      this.updateScrollerContainerRect();
-      this.updateScrollerRect();
       this.setTransitionTime(circular.style);
       this.refresh();
-      this.scrollTo(this.bounceScrollLeft, this.bounceScrollTop);
     },
     methods: {
       /**
@@ -173,7 +151,7 @@ __renderjsModules["31349b53"] = (() => {
        * @param {number} time
        */
       setTransitionTime(time) {
-        scroller.style["transitionDuration"] = time + "ms";
+        scrollerContainer.style["transitionDuration"] = time + "ms";
       },
       /**
        *
@@ -181,7 +159,7 @@ __renderjsModules["31349b53"] = (() => {
        * @param {string} easing
        */
       setTransitionTimingFunction(easing) {
-        scroller.style["transitionTimingFunction"] = easing;
+        scrollerContainer.style["transitionTimingFunction"] = easing;
       },
       /**
        *
@@ -190,23 +168,7 @@ __renderjsModules["31349b53"] = (() => {
        * @param {number} _y
        */
       setTransForm(_x, _y) {
-        scroller.style["transform"] = `translate(${_x}px, ${_y}px) translateZ(0)`;
-      },
-      /**
-       * @description 更新滚动容器矩形
-      */
-      updateScrollerContainerRect() {
-        if (scrollerContainer) {
-          scrollerContainerRect = scrollerContainer.getBoundingClientRect();
-        }
-      },
-      /**
-       * @description 更新滚动目标矩形
-      */
-      updateScrollerRect() {
-        if (scroller) {
-          scrollerRect = scroller.getBoundingClientRect();
-        }
+        scrollerContainer.style["transform"] = `translate(${_x}px, ${_y}px) translateZ(0)`;
       },
       /**
        * @description 更新 x 轴是否可滚动
@@ -215,26 +177,14 @@ __renderjsModules["31349b53"] = (() => {
         this.bounceScrollX = n;
       },
       /**
-       * @description 更新 x 轴距离
-      */
-      updateScrollLeft(n) {
-        this.bounceScrollLeft = n;
-      },
-      /**
-       * @description 更新 y 轴距离
-      */
-      updateScrollTop(n) {
-        this.bounceScrollTop = n;
-      },
-      /**
        * @description 更新 y 轴是否可滚动
       */
       updateScrollY(n) {
         this.bounceScrollY = n;
       },
       /**
-       * 
-       * @description 计算当前位置
+       *
+       * @description H5 端, 计算当前位置
       */
       getComputedPosition() {
         let matrix = window.getComputedStyle(scroller, null);
@@ -249,18 +199,8 @@ __renderjsModules["31349b53"] = (() => {
        * @description 更新数据
       */
       refresh() {
-        this.updateScrollerContainerRect();
-        this.updateScrollerRect();
-        maxScrollX = scrollerContainerRect.width - scrollerRect.width;
-        maxScrollY = scrollerContainerRect.height - scrollerRect.height;
-        hasHorizontalScroll = this.bounceScrollX && maxScrollX < 0;
-        hasVerticalScroll = this.bounceScrollY && maxScrollY < 0;
-        if (hasHorizontalScroll === false) {
-          maxScrollX = 0;
-        }
-        if (hasVerticalScroll === false) {
-          maxScrollY = 0;
-        }
+        hasHorizontalScroll = this.bounceScrollX;
+        hasVerticalScroll = this.bounceScrollY;
         endTime = 0;
         directionX = 0;
         directionY = 0;
@@ -378,8 +318,39 @@ __renderjsModules["31349b53"] = (() => {
        * @param {number} num2
        */
       compared(num, num2) {
-        const MAXIMUM_ALLOWABLE_VALUE = 10;
+        const MAXIMUM_ALLOWABLE_VALUE = 15;
         return Math.abs(num - num2) <= MAXIMUM_ALLOWABLE_VALUE;
+      },
+      /**
+       * 
+       * @description 滚动位置是否在顶部
+      */
+      isTop() {
+        return scrollerContainer.scrollTop === 0;
+      },
+      /**
+       * 
+       * @description 滚动位置是否在底部
+      */
+      isBottom() {
+        return this.compared(
+          scrollerContainer.scrollTop + scrollerContainer.clientHeight,
+          scroller.scrollHeight
+        );
+      },
+      /**
+       * 
+       * @description 是否禁用顶部向下滑动时的回弹行为
+      */
+      isDisabledToBottomBounce() {
+        return (this.isTop() || this.isBottom()) === false || y === 0 && directionY > 0;
+      },
+      /**
+       * 
+       * @description 是否禁用底部向上滑动时的回弹行为
+      */
+      isDisabledToTopBounce() {
+        return (this.isTop() || this.isBottom()) === false || y === 0 && directionY < 0;
       },
       /**
        *
@@ -443,6 +414,9 @@ __renderjsModules["31349b53"] = (() => {
           }
           directionX = deltaX > 0 ? -1 : deltaX < 0 ? 1 : 0;
           directionY = deltaY > 0 ? -1 : deltaY < 0 ? 1 : 0;
+          if (this.isDisabledToBottomBounce() && this.isDisabledToTopBounce()) {
+            return this.refresh();
+          }
           if (moved === false) {
           }
           moved = true;
@@ -487,7 +461,7 @@ __renderjsModules["31349b53"] = (() => {
               startX,
               duration,
               maxScrollX,
-              scrollerContainerRect.width
+              scrollerContainer.clientWidth
             ) : {
               destination: newX,
               duration: 0
@@ -497,7 +471,7 @@ __renderjsModules["31349b53"] = (() => {
               startY,
               duration,
               maxScrollY,
-              scrollerContainerRect.height
+              scrollerContainer.clientHeight
             ) : {
               destination: newY,
               duration: 0

@@ -3,6 +3,9 @@
   margin: 0;
   padding: 0;
 }
+.bounce[data-v-1cf27b2a] {
+  height: calc(100vh - 44px);
+}
 .card[data-v-1cf27b2a] {
   margin-top: 10px;
   background-color: yellowgreen;

@@ -4,21 +4,15 @@
     class="scroller-container"
     :style="{ width: width, height: height }"
 
-    :width="width"
-    :height="height"
-    :change:width="bounce.updateScrollerContainerRect"
-    :change:height="bounce.updateScrollerContainerRect"
+    :bounceScrollX="scrollX"
+    :change:bounceScrollX="bounce.updateScrollX"
+    :bounceScrollY="scrollY"
+    :change:bounceScrollY="bounce.updateScrollY"
 
     :scroll-x="scrollX"
-    :change:scroll-x="bounce.updateScrollX"
     :scroll-y="scrollY"
-    :change:scroll-y="bounce.updateScrollY"
-
     :scrollLeft="scrollLeft"
-    :change:scrollLeft="bounce.updateScrollLeft"
     :scrollTop="scrollTop"
-    :change:scrollTop="bounce.updateScrollTop"
-
     :upper-threshold="upperThreshold"
     :lower-threshold="lowerThreshold"
     :scroll-into-view="scrollIntoView"
@@ -40,18 +34,20 @@
     @refresherrefresh="handleEvent"
     @refresherrestore="handleEvent"
     @refresherabort="handleEvent"
-    @touchstart="bounce.handleStart"
-    @touchmove="bounce.handleMove"
-    @touchend="bounce.handleEnd"
-    @touchcancel="bounce.handleCancel"
-    @mousedown="bounce.handleStart"
-    @mousemove="bounce.handleMove"
-    @mouseup="bounce.handleEnd"
+
+    @transitionend="bounce.handleTransitionend"
   >
     <view
       id="scroller"
       class="scroller"
-      @transitionend="bounce.handleTransitionend"
+
+      @touchstart="bounce.handleStart"
+      @touchmove="bounce.handleMove"
+      @touchend="bounce.handleEnd"
+      @touchcancel="bounce.handleCancel"
+      @mousedown="bounce.handleStart"
+      @mousemove="bounce.handleMove"
+      @mouseup="bounce.handleEnd"
     >
       <slot name="default"></slot>
     </view>
@@ -173,6 +169,17 @@ export default {
 </script>
 
 <script module="bounce" lang="renderjs">
+
+/**
+ * TODO:
+ * 
+ * 1. 左右滚动回弹的行为未添加限制 (在最左侧时, 手指由右向左滑需要禁用 bounce 行为, 反之亦然)
+ * 2. 列表数据量多时 (数量视列表项视图渲染、数据操作而定) 卡顿明显
+ * 3. Chrome 极易误触下拉刷新
+ * 4. 需要屏蔽 IOS 原生回弹效果 (H5 使用 iNoBounce, App 使用 uniapp 提供的配置)
+ * 
+*/
+
 import {
   BOUNCE_TIME,
   eventType,
@@ -183,6 +190,7 @@ import {
   debounce
 } from './scroll-view-bounce.js';
 
+/** 当前位置 */
 let ownnerPos = {
   x: 0,
   y: 0
@@ -192,54 +200,51 @@ let ownnerPos = {
 let scrollerContainer = null;
 /** 滚动目标 */
 let scroller = null;
-/** 滚动容器 rect */
-let scrollerContainerRect = {
-  left: 0,
-  top: 0,
-  width: 0,
-  height: 0
-};
-/** 滚动目标 rect */
-let scrollerRect = {
-  left: 0,
-  top: 0,
-  width: 0,
-  height: 0
-};
+
 /** x 轴最大滚动距离 */
 let maxScrollX = 0;
 /** y 轴最大滚动距离 */
 let maxScrollY = 0;
+
 /** 允许 x 轴滚动 */
 let hasHorizontalScroll = false;
 /** 允许 y 轴滚动 */
 let hasVerticalScroll = false;
+
 /** 是否在过渡中 */
 let isInTransition = false;
+
 /** 开始时间 */
 let startTime = 0;
 /** 结束时间 */
 let endTime = 0;
+
 /** 当前事件类型，同属一组的事件数据一致，(touchstart, touchmove, touchend) */
 let initiated = 0;
+
 /** 是否移动中 */
 let moved = false;
+
 /** x 点 */
 let x = 0;
 /** y 点 */
 let y = 0;
+
 /** 开始 x 点 */
 let startX = 0;
 /** 开始 y 点 */
 let startY = 0;
+
 /** 页面 x 点 */
 let pointX = 0;
 /** 页面 y 点 */
 let pointY = 0;
+
 /** 区域 x 点 */
 let distX = 0;
 /** 区域 y 点 */
 let distY = 0;
+
 /** 方向 x 点 */
 let directionX = 0;
 /** 方向 y 点 */
@@ -249,9 +254,7 @@ export default {
   data() {
     return {
       bounceScrollX: false,
-      bounceScrollY: false,
-      bounceScrollLeft: 0,
-      bounceScrollTop: 0,
+      bounceScrollY: false
     };
   },
   watch: {
@@ -260,27 +263,18 @@ export default {
     },
     bounceScrollY(val) {
       this.refresh();
-    },
-    bounceScrollLeft(val) {
-      this.scrollTo(val, this.bounceScrollTop);
-    },
-    bounceScrollTop(val) {
-      this.scrollTo(this.bounceScrollLeft, val);
     }
   },
   /** init */
   mounted() {
     scrollerContainer = document.getElementById('scroller-container');
-    scroller = document.getElementById('scroller');
+    scrollerContainer = scrollerContainer.getElementsByClassName('uni-scroll-view')[1];
 
-    this.updateScrollerContainerRect();
-    this.updateScrollerRect();
+    scroller = document.getElementById('scroller');
 
     this.setTransitionTime(circular.style);
 
     this.refresh();
-
-    this.scrollTo(this.bounceScrollLeft, this.bounceScrollTop);
   },
   methods: {
     /**
@@ -289,7 +283,7 @@ export default {
      * @param {number} time
      */
      setTransitionTime(time) {
-      scroller.style['transitionDuration'] = time + 'ms';
+      scrollerContainer.style['transitionDuration'] = time + 'ms';
     },
     /**
      *
@@ -297,7 +291,7 @@ export default {
      * @param {string} easing
      */
     setTransitionTimingFunction(easing) {
-      scroller.style['transitionTimingFunction'] = easing;
+      scrollerContainer.style['transitionTimingFunction'] = easing;
     },
     /**
      *
@@ -306,41 +300,13 @@ export default {
      * @param {number} _y
      */
     setTransForm(_x, _y) {
-      scroller.style['transform'] = `translate(${_x}px, ${_y}px) translateZ(0)`;
-    },
-    /**
-     * @description 更新滚动容器矩形
-    */
-    updateScrollerContainerRect() {
-      if (scrollerContainer) {
-        scrollerContainerRect = scrollerContainer.getBoundingClientRect();
-      }
-    },
-    /**
-     * @description 更新滚动目标矩形
-    */
-    updateScrollerRect() {
-      if (scroller) {
-        scrollerRect = scroller.getBoundingClientRect();
-      }
+      scrollerContainer.style['transform'] = `translate(${_x}px, ${_y}px) translateZ(0)`;
     },
     /**
      * @description 更新 x 轴是否可滚动
     */
     updateScrollX(n) {
       this.bounceScrollX = n;
-    },
-    /**
-     * @description 更新 x 轴距离
-    */
-    updateScrollLeft(n) {
-      this.bounceScrollLeft = n;
-    },
-    /**
-     * @description 更新 y 轴距离
-    */
-    updateScrollTop(n) {
-      this.bounceScrollTop = n;
     },
     /**
      * @description 更新 y 轴是否可滚动
@@ -350,10 +316,10 @@ export default {
     },
     /**
      *
-     * @description 计算当前位置
+     * @description H5 端, 计算当前位置
     */
     getComputedPosition() {
-      let matrix = window.getComputedStyle(scroller, null);
+      let matrix = window.getComputedStyle(scrollerContainer, null);
 
       let _x = 0;
       let _y = 0;
@@ -369,26 +335,18 @@ export default {
      * @description 更新数据
     */
     refresh() {
-      this.updateScrollerContainerRect();
-      this.updateScrollerRect();
+      // #ifdef APP-PLUS
+      hasHorizontalScroll = this.bounceScrollX;
+      hasVerticalScroll = this.bounceScrollY;
+      // #endif
 
-      maxScrollX = scrollerContainerRect.width - scrollerRect.width;
-      maxScrollY = scrollerContainerRect.height - scrollerRect.height;
-
-      hasHorizontalScroll = this.bounceScrollX && maxScrollX < 0;
-      hasVerticalScroll = this.bounceScrollY && maxScrollY < 0;
-
-      if (hasHorizontalScroll === false) {
-        maxScrollX = 0;
-        // this.scrollerWidth = this.wrapperWidth;
-      }
-
-      if (hasVerticalScroll === false) {
-        maxScrollY = 0;
-        // this.scrollerHeight = this.wrapperHeight;
-      }
+      // #ifdef H5
+      hasHorizontalScroll = this.scrollX;
+      hasVerticalScroll = this.scrollY;
+      // #endif
 
       endTime = 0;
+
       directionX = 0;
       directionY = 0;
 
@@ -423,14 +381,12 @@ export default {
       if (hasHorizontalScroll === false || x > 0) {
         _x = 0;
       } else if (x < maxScrollX) {
-        // TODO: 判断条件后续可能需要修改
         _x = maxScrollX;
       }
 
       if (hasVerticalScroll === false || y > 0) {
         _y = 0;
       } else if (y < maxScrollY) {
-        // TODO: 判断条件后续可能需要修改
         _y = maxScrollY;
       }
 
@@ -533,9 +489,47 @@ export default {
      * @param {number} num2
      */
     compared(num, num2) {
-      const MAXIMUM_ALLOWABLE_VALUE = 10;
+      const MAXIMUM_ALLOWABLE_VALUE = 15;
 
       return Math.abs(num - num2) <= MAXIMUM_ALLOWABLE_VALUE;
+    },
+    /**
+     * 
+     * @description 滚动容器和滚动目前的 scrollHeight 差异
+    */
+    highGap() {
+      return scrollerContainer.scrollHeight - scroller.scrollHeight;
+    },
+    /**
+     * 
+     * @description 滚动位置是否在顶部
+    */
+    isTop() {
+      return scrollerContainer.scrollTop === 0;
+    },
+    /**
+     * 
+     * @description 滚动位置是否在底部
+    */
+    isBottom() {
+      return this.compared(
+        scrollerContainer.scrollTop + scrollerContainer.clientHeight,
+        scroller.scrollHeight + this.highGap()
+      );
+    },
+    /**
+     * 
+     * @description 是否禁用顶部向下滑动时的回弹行为
+    */
+    isDisabledToBottomBounce() {
+      return ((this.isTop() || this.isBottom()) === false) || y === 0 && directionY > 0;
+    },
+    /**
+     * 
+     * @description 是否禁用底部向上滑动时的回弹行为
+    */
+    isDisabledToTopBounce() {
+      return ((this.isTop() || this.isBottom()) === false) || y === 0 && directionY < 0;
     },
     /**
      *
@@ -544,6 +538,7 @@ export default {
      */
     handleStart(e) {
       this.runIn(e.type, () => {
+
         // 获取触摸点
         const point = e.touches ? e.touches[0] : e;
 
@@ -654,6 +649,10 @@ export default {
         directionX = deltaX > 0 ? -1 : deltaX < 0 ? 1 : 0;
         directionY = deltaY > 0 ? -1 : deltaY < 0 ? 1 : 0;
 
+        if (this.isDisabledToBottomBounce() && this.isDisabledToTopBounce()) {
+          return this.refresh();
+        }
+
         // 未移动
         if (moved === false) {
           // scrollStart 滚动开始
@@ -734,7 +733,7 @@ export default {
                 startX,
                 duration,
                 maxScrollX,
-                scrollerContainerRect.width
+                scrollerContainer.clientWidth
               )
             : {
                 destination: newX,
@@ -747,7 +746,7 @@ export default {
                 startY,
                 duration,
                 maxScrollY,
-                scrollerContainerRect.height
+                scrollerContainer.clientHeight
               )
             : {
                 destination: newY,
