@@ -174,9 +174,11 @@ export default {
  * TODO:
  * 
  * 1. 左右滚动回弹的行为未添加限制 (在最左侧时, 手指由右向左滑需要禁用 bounce 行为, 反之亦然)
- * 2. 列表数据量多时 (数量视列表项视图渲染、数据操作而定) 卡顿明显
+ * 2. 列表数据量多时 (数量视列表项视图渲染、数据操作而定) 卡顿明显, 需要研究虚拟列表
  * 3. Chrome 极易误触下拉刷新
  * 4. 需要屏蔽 IOS 原生回弹效果 (H5 使用 iNoBounce, App 使用 uniapp 提供的配置)
+ * 5. 通过固定 id 的方式获取 scrollerContainer 及 scroller 不可靠
+ * 6. iNoBounce 的行为不可预计, 可以侦听 window 的 touchstart、touchmove 实现禁用 bounce 行为
  * 
 */
 
