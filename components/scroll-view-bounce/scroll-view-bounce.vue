@@ -542,7 +542,7 @@ export default {
       this.runIn(e.type, () => {
 
         // 获取触摸点
-        const point = e.touches ? e.touches[0] : e;
+        const point = e.touches?.length ? e.touches[0] : e;
 
         // 未移动
         moved = false;
@@ -597,7 +597,7 @@ export default {
     handleMove(e) {
       this.runIn(e.type, () => {
         // 当前点
-        const point = e.touches ? e.touches[0] : e;
+        const point = e.touches?.length ? e.touches[0] : e;
 
         // 距上次的偏移
         let deltaX = point.pageX - pointX;
@@ -682,7 +682,7 @@ export default {
     handleEnd(e) {
       this.runIn(e.type, () => {
         // 获取点
-        const point = e.changedTouches ? e.changedTouches[0] : e;
+        const point = e.changedTouches?.length ? e.changedTouches[0] : e;
 
         // 持续时长
         const duration = Date.now() - startTime;
